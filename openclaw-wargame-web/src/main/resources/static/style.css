@@ -33,6 +33,12 @@ body {
 .badge-run { background: #2e7d32; color: white; }
 .badge-stop { background: #c62828; color: white; }
 .badge-connect { background: #ff8f00; color: white; }
+.badge-ws { background: #1976d2; color: white; animation: pulse 1.5s infinite; }
+.badge-poll { background: #455a64; color: white; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
 
 .grid {
   display: grid;

@@ -1,39 +1,50 @@
 # OpenClaw Wargame · AI 自主战争仿真系统
 
 > **军事战争实时分析** + **战争无人化** + **自动决策与反击** + **AI 战术顾问 + 战场优势增强**
+> 现已支持 **WebSocket 毫秒级实时推送** 和 **Docker 一键部署**。
 
 基于 Java 17 的完整战争仿真系统，覆盖 OODA 作战循环、武器调度、强化学习、Web 可视化、战术顾问 Buff 增益。
 
 [![Java 17](https://img.shields.io/badge/Java-17-blue)]()
 [![Maven](https://img.shields.io/badge/Maven-3.8%2B-orange)]()
-[![Tests](https://img.shields.io/badge/Tests-90%20passed-green)]()
+[![Tests](https://img.shields.io/badge/Tests-98%20passed-green)]()
 [![Modules](https://img.shields.io/badge/Modules-10-purple)]()
+[![Docker](https://img.shields.io/badge/Docker-ready-blue)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue)]()
 
 **仓库**：https://github.com/liugl951127/aiWar
-**最新 Release**：[v1.2.0](https://github.com/liugl951127/aiWar/releases/tag/v1.2.0) · **完整状态**：见 [PROJECT_STATUS.md](PROJECT_STATUS.md)
+**最新 Release**：[v1.3.0](https://github.com/liugl951127/aiWar/releases/tag/v1.3.0) · **完整状态**：见 [PROJECT_STATUS.md](PROJECT_STATUS.md)
 
 ---
 
 ## ⚡ 一键体验
 
-```bash
-# 下载最新 fat jar (226K)
-curl -L -o wargame.jar \
-  https://github.com/liugl951127/aiWar/releases/download/v1.2.0/openclaw-wargame-demo-1.2.0.jar
+### 方式 1：下载 jar（最快）
 
-# 命令行对战（默认规则引擎）
+```bash
+# 下载最新 fat jar (~230K)
+curl -L -o wargame.jar \
+  https://github.com/liugl951127/aiWar/releases/download/v1.3.0/openclaw-wargame-demo-1.3.0.jar
+
+# 命令行对战
 java -jar wargame.jar 42 25
 
-# 启动 Web 可视化（含 Tactical Advisor + Buff 大屏）
+# Web 可视化（WebSocket 实时推送 + REST API + Tactical Advisor + Buff 大屏）
 java -jar wargame.jar 42 60 --web
 # 浏览器打开 http://localhost:18080/
 
-# RL 强化学习训练（10 个 episode）
+# RL 训练
 java -jar wargame.jar 42 30 --rl --episodes 10
 ```
 
-仅需 Java 17+ 即可运行，**零外部依赖**。
+### 方式 2：Docker（推荐用于部署）
+
+```bash
+docker compose up --build
+# 浏览器打开 http://localhost:18080/
+```
+
+仅需 Java 17+ 或 Docker，**零外部依赖**。
 
 ---
 
@@ -168,17 +179,24 @@ OpenClaw Wargame Web .............................. SUCCESS [6 tests]
 - 🎯 **Top Threats**：每阵营前 3 大威胁
 - 🧠 **Tactical Advisor**：5 维优势条 + 9 种建议列表
 - 📜 **Recent Events**：最近 12 条事件流
+- 🔵 **WebSocket 指示器**：实时推送状态（vs POLL 回退模式）
 
-REST API：
+REST API (HTTP 18080)：
 - `GET /api/snapshot` — 完整快照
 - `GET /api/analysis/{blue|red}` — 态势分析
 - `GET /api/advisory/{blue|red}` — 战术顾问报告
 - `GET /api/events` — 最近事件
 
+WebSocket (port 18081)：
+- `ws://localhost:18081/ws/snapshot` — 主动推送 snapshot（毫秒级实时）
+- 客户端消息 `"ping"` → 服务端回 `"pong"`
+- 失败自动降级到 500ms REST 轮询
+
 ---
 
 ## 📜 版本历史
 
+- **v1.3.0** (2026-06-25) — WebSocket 毫秒级实时推送 + Docker 一键部署 + GitHub Actions CI + Q 表 CSV 导出
 - **v1.2.0** (2026-06-25) — AI 战术顾问 + 战场优势增强 + Buff 系统 + Web 集成
 - **v1.1.0** (2026-06-25) — 强化学习 (Q-Learning) + Web 可视化 + 3 套 AI 大脑切换
 - **v1.0.0** (2026-06-25) — 核心骨架（8 模块）+ OODA 循环 + 端到端 Demo
@@ -192,7 +210,7 @@ REST API：
 - ✅ V1.0 — 核心骨架
 - ✅ V1.1 — RL + Web 可视化
 - ✅ V1.2 — AI 战术顾问 + Buff
-- 🔜 V1.3 — WebSocket 推送（毫秒级实时）
+- ✅ V1.3 — WebSocket 推送 + Docker + CI
 - 🔜 V1.4 — DQN 深度强化学习
 - 🔜 V1.5 — 真实地图接入 (OpenStreetMap)
 - 🔜 V2.0 — 真实武器 API 集成

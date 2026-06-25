@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-06-25
+
+### Added
+- **`WebSocketServer`** — Minimal RFC 6455 WebSocket server (zero deps, JDK built-in `ServerSocket` + manual frame parser)
+  - Path `ws://host:18081/ws/snapshot` — pushes snapshot on every state change (100ms poll for change detection)
+  - Auto-broadcasts to all connected clients
+  - Ping/Pong frame support
+  - Auto-cleanup on client disconnect
+- **`WebSocketServerTest`** — 5 tests covering connect / initial frame / push on change / ping-pong / multi-client
+- **JS dashboard** — Auto-detects WebSocket vs REST polling fallback, shows WS/POLL indicator badge
+- **`Dockerfile`** — Multi-stage build (Maven builder → JRE 17 runtime), non-root user, healthcheck, exposes 18080+18081
+- **`docker-compose.yml`** — One-command deployment with port mapping + memory limits + restart policy
+- **`.github/workflows/ci.yml`** — Build + test on every push, package fat jar artifact
+- **`.github/workflows/docker.yml`** — Build & push Docker image to GHCR on tag
+- **`QLearner.dumpCsv()`** — Export Q-table to CSV (state_code, strategy, value)
+- **`QLearner.snapshot()`** — Defensive copy of Q-table
+- **`QLearner.TrainingStats`** + `recordEpisodeStats()` — Per-episode reward/epsilon/size tracking for learning curves
+
+### Stats
+- Tests: 90 → **98** (+8: 5 WS + 3 RL observability)
+- Java files: 63 → 68 (+5: WebSocketServer + test + 4 Q-Learner methods + workflow)
+- Code: 5,850 → ~6,500 lines
+
 ## [1.2.1] - 2026-06-25
 
 ### Added

@@ -40,6 +40,8 @@ public final class WargameServer {
     private final BattleStateHolder holder;
     private final com.openclaw.wargame.realtime.BattleEventBus eventBus;
     private HttpServer server;
+    private WebSocketServer wsServer;
+    private boolean wsEnabled = true;
 
     public WargameServer(int port, BattleStateHolder holder,
                          com.openclaw.wargame.realtime.BattleEventBus eventBus) {
@@ -48,9 +50,18 @@ public final class WargameServer {
         this.eventBus = eventBus;
     }
 
+    public WargameServer enableWebSocket(boolean enable) {
+        this.wsEnabled = enable;
+        return this;
+    }
+
+    public int webSocketClients() {
+        return wsServer == null ? 0 : wsServer.clientCount();
+    }
+
     public void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.setExecutor(Executors.newFixedThreadPool(2));
+        server.setExecutor(Executors.newFixedThreadPool(4));
 
         server.createContext("/api/state", this::handleState);
         server.createContext("/api/snapshot", this::handleSnapshot);
@@ -60,11 +71,19 @@ public final class WargameServer {
         server.createContext("/static", this::handleStatic);
         server.createContext("/", this::handleRoot);
 
+        if (wsEnabled) {
+            wsServer = new WebSocketServer(port, "/ws/snapshot", holder);
+            wsServer.attachTo(server);
+            wsServer.startBroadcaster(100); // 100ms 检测一次
+            log.info("WebSocket enabled at ws://localhost:{}/ws/snapshot", port);
+        }
+
         server.start();
         log.info("Wargame HTTP server started on http://localhost:{}", port);
     }
 
     public void stop() {
+        if (wsServer != null) wsServer.stop();
         if (server != null) server.stop(0);
     }
 

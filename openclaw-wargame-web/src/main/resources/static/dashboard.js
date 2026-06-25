@@ -1,5 +1,9 @@
-// OpenClaw Wargame Live Dashboard
+// OpenClaw Wargame Live Dashboard (V1.3 - WebSocket)
+// 通过 ws://...:18081/ws/snapshot 实时接收 snapshot 推送，替代 500ms 轮询。
+// 如果 WebSocket 不可用，自动 fallback 到 REST 轮询。
+
 const POLL_MS = 500;
+const WS_PORT_OFFSET = 1; // WS 服务在 HTTP 端口 + 1
 
 const canvas = document.getElementById('map');
 const ctx = canvas.getContext('2d');
@@ -17,11 +21,76 @@ const redAdvantageEl = document.getElementById('redAdvantage');
 const blueAdvicesEl = document.getElementById('blueAdvices');
 const redAdvicesEl = document.getElementById('redAdvices');
 const eventsEl = document.getElementById('events');
+const wsIndicatorEl = document.getElementById('wsIndicator');
 
 let lastState = null;
 let mapWidth = 1000, mapHeight = 1000;
+let usingWebSocket = false;
+let ws = null;
 
-async function poll() {
+// === WebSocket 客户端 ===
+
+function connectWebSocket() {
+  try {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = location.hostname || 'localhost';
+    const wsPort = (location.port ? parseInt(location.port) + WS_PORT_OFFSET : 18081);
+    const url = `${proto}//${wsHost}:${wsPort}/ws/snapshot`;
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      usingWebSocket = true;
+      if (wsIndicatorEl) {
+        wsIndicatorEl.textContent = 'WS';
+        wsIndicatorEl.className = 'badge badge-ws';
+      }
+      statusEl.textContent = '⚔️ connected (WebSocket)';
+      statusEl.className = 'badge badge-run';
+      // Send ping keepalive
+      setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send('ping');
+      }, 30000);
+    };
+
+    ws.onmessage = (event) => {
+      const data = typeof event.data === 'string' ? event.data : '';
+      if (data === 'pong') return;
+      try {
+        const snap = JSON.parse(data);
+        if (snap.type === 'snapshot') handleSnapshot(snap);
+      } catch (e) {
+        console.error('parse error', e);
+      }
+    };
+
+    ws.onerror = () => {
+      usingWebSocket = false;
+      if (wsIndicatorEl) {
+        wsIndicatorEl.textContent = 'POLL';
+        wsIndicatorEl.className = 'badge badge-poll';
+      }
+      statusEl.textContent = '⚠️ WS error, fallback to polling';
+      statusEl.className = 'badge badge-connect';
+    };
+
+    ws.onclose = () => {
+      usingWebSocket = false;
+      if (wsIndicatorEl) {
+        wsIndicatorEl.textContent = 'POLL';
+        wsIndicatorEl.className = 'badge badge-poll';
+      }
+      statusEl.textContent = '🔄 WS closed, retrying...';
+      statusEl.className = 'badge badge-connect';
+      setTimeout(connectWebSocket, 3000);
+    };
+  } catch (e) {
+    usingWebSocket = false;
+  }
+}
+
+// === REST 轮询 fallback ===
+
+async function pollOnce() {
   try {
     const [snapRes, blueRes, redRes, blueAdvRes, redAdvRes, evRes] = await Promise.all([
       fetch('/api/snapshot').then(r => r.json()),
@@ -38,32 +107,98 @@ async function poll() {
   }
 }
 
-function render(snap, blueAnalysis, redAnalysis, blueAdvisory, redAdvisory, events) {
+// === 快照处理 ===
+
+function handleSnapshot(snap) {
+  // 来自 WebSocket 的紧凑快照
+  if (snap.state === null) return;
+
+  // WebSocket 格式转换到统一格式
+  const unified = {
+    tick: snap.tick,
+    timeSeconds: snap.t / 1000,
+    running: snap.running,
+    winner: snap.winner,
+    mapWidth: snap.w,
+    mapHeight: snap.h,
+    blueAlive: snap.ba,
+    redAlive: snap.ra,
+    units: (snap.units || []).map(u => ({
+      id: u.id,
+      team: u.t === 'B' ? 'BLUE' : u.t === 'R' ? 'RED' : 'NEUTRAL',
+      type: u.k,
+      x: u.x,
+      y: u.y,
+      hp: u.hp,
+      maxHp: u.mh,
+      status: u.s === 'I' ? 'IDLE' : u.s === 'M' ? 'MOVING' : u.s === 'E' ? 'ENGAGING'
+                : u.s === 'R' ? 'RETREATING' : u.s === 'D' ? 'DESTROYED' : 'IDLE',
+      alive: u.a === 1,
+      buffCount: u.bf || 0
+    })),
+    _advBlue: snap.adv && snap.adv.b,
+    _advRed: snap.adv && snap.adv.r
+  };
+  drawMap(unified);
+
+  tickEl.textContent = unified.tick;
+  timeEl.textContent = unified.timeSeconds.toFixed(1);
+  mapWidth = unified.mapWidth;
+  mapHeight = unified.mapHeight;
+  blueAliveEl.textContent = unified.blueAlive;
+  redAliveEl.textContent = unified.redAlive;
+
+  // Advantage bar
+  if (unified._advBlue) {
+    renderAdvantageBar(blueAdvantageEl, unified._advBlue);
+    // 在 WS 模式下我们没拿到 advices 全字段；保持上次（轮询模式下完整渲染）
+  }
+  if (unified._advRed) {
+    renderAdvantageBar(redAdvantageEl, unified._advRed);
+  }
+
   // Status
-  if (snap.winner) {
-    statusEl.textContent = `🏆 ${snap.winner} WINS @ tick ${snap.winnerTick}`;
+  if (unified.winner) {
+    statusEl.textContent = `🏆 ${unified.winner} WINS @ tick ${unified.tick}`;
     statusEl.className = 'badge badge-stop';
-  } else if (snap.running) {
+  } else if (unified.running) {
     statusEl.textContent = '⚔️ IN PROGRESS';
     statusEl.className = 'badge badge-run';
-  } else {
-    statusEl.textContent = '⏸️ IDLE';
-    statusEl.className = 'badge badge-connect';
   }
 
-  if (snap.tick !== undefined) {
-    tickEl.textContent = snap.tick;
-    timeEl.textContent = snap.timeSeconds.toFixed(1);
-    mapWidth = snap.mapWidth || 1000;
-    mapHeight = snap.mapHeight || 1000;
+  lastState = unified;
+}
+
+// === 渲染 ===
+
+function render(snap, blueAnalysis, redAnalysis, blueAdvisory, redAdvisory, events) {
+  if (snap && snap.state !== null) {
+    handleSnapshot({
+      tick: snap.tick,
+      t: (snap.timeSeconds || 0) * 1000,
+      running: snap.running,
+      winner: snap.winner,
+      w: snap.mapWidth || 1000,
+      h: snap.mapHeight || 1000,
+      ba: snap.blueAlive,
+      ra: snap.redAlive,
+      units: (snap.units || []).map(u => ({
+        id: u.id,
+        team: u.team,
+        type: u.type,
+        x: u.x,
+        y: u.y,
+        hp: u.hp,
+        mh: u.maxHp,
+        s: u.status === 'IDLE' ? 'I' : u.status === 'MOVING' ? 'M' : u.status === 'ENGAGING' ? 'E'
+            : u.status === 'RETREATING' ? 'R' : u.status === 'DESTROYED' ? 'D' : 'I',
+        a: u.alive ? 1 : 0,
+        bf: (u.buffs || []).length
+      })),
+      adv: { b: blueAdvisory && blueAdvisory.advantage, r: redAdvisory && redAdvisory.advantage }
+    });
   }
-  blueAliveEl.textContent = snap.blueAlive ?? '-';
-  redAliveEl.textContent = snap.redAlive ?? '-';
 
-  // Render map
-  drawMap(snap);
-
-  // Analysis
   if (blueAnalysis && !blueAnalysis.error) {
     blueRatioEl.textContent = isFinite(blueAnalysis.firepowerRatio) ?
       blueAnalysis.firepowerRatio.toFixed(2) : '∞';
@@ -79,28 +214,32 @@ function render(snap, blueAnalysis, redAnalysis, blueAdvisory, redAdvisory, even
     ).join('');
   }
 
-  // Events
+  if (blueAdvisory && !blueAdvisory.error) {
+    renderAdvantageBar(blueAdvantageEl, blueAdvisory.advantage);
+    renderAdvices(blueAdvicesEl, blueAdvisory.advices);
+  }
+  if (redAdvisory && !redAdvisory.error) {
+    renderAdvantageBar(redAdvantageEl, redAdvisory.advantage);
+    renderAdvices(redAdvicesEl, redAdvisory.advices);
+  }
+
   eventsEl.innerHTML = (events.events || []).slice().reverse().slice(0, 12).map(e =>
     `<li><span class="kind ${e.kind}">${e.kind}</span><span class="tick">t=${e.tick}</span></li>`
   ).join('');
-
-  // Tactical Advisor
-  renderAdvisory(blueAdvantageEl, blueAdvicesEl, blueAdvisory, 'blue');
-  renderAdvisory(redAdvantageEl, redAdvicesEl, redAdvisory, 'red');
 }
 
 function renderAdvantageBar(el, adv) {
-  if (!adv) { el.innerHTML = '<div class="row" style="color:#9fb1d6;">no data</div>'; return; }
+  if (!adv) return;
   const fields = [
-    { name: 'firepower', val: adv.firepower },
-    { name: 'manpower', val: adv.manpower },
-    { name: 'detection', val: adv.detection },
-    { name: 'mobility', val: adv.mobility },
-    { name: 'cohesion', val: adv.cohesion }
+    { name: 'firepower', val: adv.firepower !== undefined ? adv.firepower : adv.f },
+    { name: 'manpower', val: adv.manpower !== undefined ? adv.manpower : adv.m },
+    { name: 'detection', val: adv.detection !== undefined ? adv.detection : adv.d },
+    { name: 'mobility', val: adv.mobility !== undefined ? adv.mobility : adv.s },
+    { name: 'cohesion', val: adv.cohesion !== undefined ? adv.cohesion : adv.c }
   ];
   let html = '';
   for (const f of fields) {
-    const pct = Math.round(f.val * 100);
+    const pct = Math.round((f.val || 0) * 100);
     const color = f.val > 0.6 ? '#4caf50' : f.val > 0.4 ? '#ff9800' : '#f44336';
     html += `<div class="row">
       <span class="label">${f.name}</span>
@@ -108,8 +247,8 @@ function renderAdvantageBar(el, adv) {
       <span class="val">${pct}%</span>
     </div>`;
   }
-  const opct = Math.round(adv.overall * 100);
-  const ocolor = adv.overall > 0.6 ? '#4caf50' : adv.overall > 0.4 ? '#ff9800' : '#f44336';
+  const opct = Math.round((adv.overall !== undefined ? adv.overall : adv.o) * 100);
+  const ocolor = (adv.overall || adv.o) > 0.6 ? '#4caf50' : (adv.overall || adv.o) > 0.4 ? '#ff9800' : '#f44336';
   html += `<div class="row overall">
     <span class="label">OVERALL</span>
     <div class="bar"><div style="width:${opct}%; background:${ocolor};"></div></div>
@@ -132,26 +271,13 @@ function renderAdvices(el, advices) {
   ).join('');
 }
 
-function renderAdvisory(advEl, listEl, data, team) {
-  if (!data || data.error) {
-    advEl.innerHTML = '<div class="row" style="color:#9fb1d6;">waiting...</div>';
-    listEl.innerHTML = '';
-    return;
-  }
-  renderAdvantageBar(advEl, data.advantage);
-  renderAdvices(listEl, data.advices);
-}
-
 function drawMap(snap) {
-  if (!snap.units) return;
+  if (!snap || !snap.units) return;
   const w = canvas.width, h = canvas.height;
   ctx.fillStyle = '#0a1426';
   ctx.fillRect(0, 0, w, h);
-
-  // Draw grid
   ctx.strokeStyle = '#14213a';
   ctx.lineWidth = 1;
-  const gridStep = 50; // 50m
   const sx = w / mapWidth, sy = h / mapHeight;
   for (let x = 0; x <= mapWidth; x += 500) {
     ctx.beginPath();
@@ -165,29 +291,22 @@ function drawMap(snap) {
     ctx.lineTo(w, y * sy);
     ctx.stroke();
   }
-
-  // Draw units
   for (const u of snap.units) {
     const cx = u.x * sx;
-    const cy = h - u.y * sy; // flip y
+    const cy = h - u.y * sy;
     let color;
     if (!u.alive) color = '#555';
     else if (u.team === 'BLUE') color = '#2196f3';
     else if (u.team === 'RED') color = '#f44336';
     else color = '#888';
-
-    // hp ratio affects radius
     const ratio = u.alive ? Math.max(0.2, u.hp / u.maxHp) : 0;
     const r = 6 + ratio * 6;
-
-    // Glow for ENGAGING
     if (u.status === 'ENGAGING') {
       ctx.beginPath();
       ctx.arc(cx, cy, r + 4, 0, 2 * Math.PI);
       ctx.fillStyle = color + '33';
       ctx.fill();
     }
-
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, 2 * Math.PI);
     ctx.fillStyle = color;
@@ -195,19 +314,15 @@ function drawMap(snap) {
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1;
     ctx.stroke();
-
-    // Buff ring (yellow if unit has buffs — surrogate using status)
-    if (u.status === 'ENGAGING') {
-      // already drawn above
-    }
-
-    // Type label
     ctx.fillStyle = '#fff';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(u.type.substring(0, 4), cx, cy - r - 4);
-
-    // HP bar below unit
+    ctx.fillText((u.type || '').substring(0, 4), cx, cy - r - 4);
+    if (u.buffCount && u.buffCount > 0) {
+      ctx.fillStyle = '#ffeb3b';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('✨', cx + r, cy - r);
+    }
     const hpw = Math.max(8, r * 2);
     const hpx = cx - hpw / 2;
     const hpy = cy + r + 4;
@@ -215,16 +330,12 @@ function drawMap(snap) {
     ctx.fillRect(hpx, hpy, hpw, 3);
     ctx.fillStyle = u.alive ? '#4caf50' : '#555';
     ctx.fillRect(hpx, hpy, hpw * (u.alive ? u.hp / u.maxHp : 0), 3);
-
-    // Buff icons (yellow glow for firepower, cyan for speed, etc.)
-    if (u.buffs && u.buffs.length > 0) {
-      ctx.fillStyle = '#ffeb3b';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('✨', cx + r, cy - r);
-    }
   }
 }
 
-setInterval(poll, POLL_MS);
-poll();
+// === 启动 ===
+
+connectWebSocket();
+// 启动 polling 作为 fallback（即使 WS 工作也保留，让 advices/events 完整刷新）
+setInterval(pollOnce, POLL_MS);
+pollOnce();

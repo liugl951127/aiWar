@@ -1,6 +1,9 @@
 package com.openclaw.wargame.rl;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -151,4 +154,51 @@ public final class QLearner {
         }
         return sb.toString();
     }
+
+    /**
+     * 导出 Q 表为 CSV（每个 state-action 对一行），便于外部分析/可视化。
+     * Format: state_code,strategy,value
+     */
+    public String dumpCsv() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("state_code,strategy,value\n");
+        for (Map.Entry<Long, double[]> e : qTable.entrySet()) {
+            double[] qs = e.getValue();
+            for (int i = 0; i < qs.length; i++) {
+                sb.append(e.getKey()).append(",")
+                  .append(Strategy.values()[i].code()).append(",")
+                  .append(String.format("%.6f", qs[i])).append("\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    /** 当前 Q 表快照（不可变） */
+    public Map<Long, double[]> snapshot() {
+        Map<Long, double[]> out = new java.util.HashMap<>();
+        for (Map.Entry<Long, double[]> e : qTable.entrySet()) {
+            out.put(e.getKey(), e.getValue().clone());
+        }
+        return out;
+    }
+
+    /**
+     * 训练历史统计（用于绘制训练曲线）。
+     */
+    private final List<TrainingStats> trainingHistory = new ArrayList<>();
+
+    public void recordEpisodeStats(double totalReward) {
+        trainingHistory.add(new TrainingStats(episodeCount, totalReward,
+                qTable.size(), epsilon, updateCount));
+    }
+
+    public List<TrainingStats> getTrainingHistory() {
+        return Collections.unmodifiableList(trainingHistory);
+    }
+
+    public void clearHistory() {
+        trainingHistory.clear();
+    }
+
+    public record TrainingStats(long episode, double totalReward, int tableSize, double epsilon, long updates) {}
 }

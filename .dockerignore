@@ -1,0 +1,15 @@
+target/
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+.git/
+.gitignore
+*.md
+!README.md
+!PROJECT_STATUS.md
+!CHANGELOG.md
+deploy/
+*.log

@@ -110,4 +110,39 @@ class QLearnerTest {
         assertTrue(q1 > q0, "学习后 Q 值应该上升 q0=" + q0 + " q1=" + q1);
         assertEquals(Strategy.AGGRESSIVE, ql.bestAction(sf));
     }
+
+    @Test
+    void csvExport() {
+        QLearner ql = new QLearner(42);
+        ql.update(new StateFeatures(0, 0, 0, 0, 0), Strategy.AGGRESSIVE, 1.0,
+                new StateFeatures(1, 1, 1, 1, 1), false);
+        String csv = ql.dumpCsv();
+        assertTrue(csv.startsWith("state_code,strategy,value\n"));
+        assertTrue(csv.contains("aggressive"));
+        assertTrue(csv.contains("defensive"));
+    }
+
+    @Test
+    void trainingHistoryRecorded() {
+        QLearner ql = new QLearner(42);
+        ql.recordEpisodeStats(10.5);
+        ql.recordEpisodeStats(15.3);
+        var history = ql.getTrainingHistory();
+        assertEquals(2, history.size());
+        assertEquals(10.5, history.get(0).totalReward(), 1e-9);
+        assertEquals(15.3, history.get(1).totalReward(), 1e-9);
+    }
+
+    @Test
+    void snapshotReturnsCopy() {
+        QLearner ql = new QLearner(42);
+        StateFeatures sf = new StateFeatures(0, 0, 0, 0, 0);
+        ql.update(sf, Strategy.AGGRESSIVE, 5.0, sf, false);
+        var snap = ql.snapshot();
+        assertEquals(1, snap.size());
+        // 验证是拷贝
+        var arr = snap.values().iterator().next();
+        arr[0] = 999.0;
+        assertNotEquals(999.0, ql.qValue(sf, Strategy.AGGRESSIVE));
+    }
 }
