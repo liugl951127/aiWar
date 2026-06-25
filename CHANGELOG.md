@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-06-25
+
+### Added
+- **`PROJECT_STATUS.md`** — Comprehensive project status report (capability matrix, architecture diagrams, OODA flow, decision logic pseudocode, all REST endpoints, version history, roadmap)
+
+### Changed
+- **`README.md`** — Simplified into a high-level landing page; delegates to PROJECT_STATUS.md for full details
+  - Quickstart one-liner: `curl` + `java -jar`
+  - V1.2 highlight section at top
+  - Trimmed from 8KB → 5KB while preserving essentials
+
 ## [1.2.0] - 2026-06-25
 
 ### Added
