@@ -43,6 +43,9 @@ public final class WargameServer {
     private WebSocketServer wsServer;
     private boolean wsEnabled = true;
 
+    /** 可选：RL 训练历史 JSON supplier（ /api/training 使用） */
+    private volatile java.util.function.Supplier<String> trainingHistorySupplier;
+
     public WargameServer(int port, BattleStateHolder holder,
                          com.openclaw.wargame.realtime.BattleEventBus eventBus) {
         this.port = port;
@@ -68,6 +71,7 @@ public final class WargameServer {
         server.createContext("/api/analysis", this::handleAnalysis);
         server.createContext("/api/advisory", this::handleAdvisory);
         server.createContext("/api/events", this::handleEvents);
+        server.createContext("/api/training", this::handleTraining);
         server.createContext("/static", this::handleStatic);
         server.createContext("/", this::handleRoot);
 
@@ -85,6 +89,21 @@ public final class WargameServer {
     public void stop() {
         if (wsServer != null) wsServer.stop();
         if (server != null) server.stop(0);
+    }
+
+    /** Attach a RL training history JSON supplier (for /api/training endpoint). */
+    public void setTrainingHistorySupplier(java.util.function.Supplier<String> supplier) {
+        this.trainingHistorySupplier = supplier;
+    }
+
+    private void handleTraining(HttpExchange ex) throws IOException {
+        if (trainingHistorySupplier == null) {
+            send(ex, 200, "application/json", "{\"episodes\":[]}");
+            return;
+        }
+        String body = trainingHistorySupplier.get();
+        if (body == null) body = "{\"episodes\":[]}";
+        send(ex, 200, "application/json", body);
     }
 
     public int port() {

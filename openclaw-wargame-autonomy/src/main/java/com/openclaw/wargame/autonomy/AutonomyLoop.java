@@ -93,6 +93,16 @@ public final class AutonomyLoop {
      */
     public static AutonomyLoop createWithMode(Team team, Simulator simulator, BattleClock clock, BattleEventBus bus,
                                               long seed, AutonomousCommander.DecisionMode mode, boolean rlTraining) {
+        QLearner learner = new QLearner(seed);
+        return createWithLearner(team, simulator, clock, bus, seed, mode, rlTraining, learner);
+    }
+
+    /**
+     * 带已有 QLearner 创建（用于跨 episode 保留 Q 表）。
+     */
+    public static AutonomyLoop createWithLearner(Team team, Simulator simulator, BattleClock clock, BattleEventBus bus,
+                                                long seed, AutonomousCommander.DecisionMode mode, boolean rlTraining,
+                                                QLearner learner) {
         RuleEngine rules = DefaultRules.createDefault();
         MonteCarloTreeSearch.SimulationFn fn = new MonteCarloTreeSearch.SimulationFn() {
             @Override
@@ -105,7 +115,6 @@ public final class AutonomyLoop {
             }
         };
         MonteCarloTreeSearch mcts = new MonteCarloTreeSearch(fn, team, 100, 8, seed);
-        QLearner learner = new QLearner(seed);
         StrategyInterpreter interpreter = new StrategyInterpreter(seed + 1);
         RLAgent rlAgent = new RLAgent(team, learner, interpreter, rlTraining);
         AutonomousCommander cmd = new AutonomousCommander(team, rules, mcts, rlAgent).setMode(mode);

@@ -82,4 +82,9 @@ public final class RLAgent {
     public void endEpisode() {
         learner.endEpisode();
     }
+
+    /** episode 结束 + 总奖励（记录到训练历史） */
+    public void endEpisode(double totalReward) {
+        learner.endEpisode(totalReward);
+    }
 }

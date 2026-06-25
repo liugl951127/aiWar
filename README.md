@@ -22,9 +22,9 @@
 ### 方式 1：下载 jar（最快）
 
 ```bash
-# 下载最新 fat jar (~230K)
+# 下载最新 fat jar (~250K)
 curl -L -o wargame.jar \
-  https://github.com/liugl951127/aiWar/releases/download/v1.3.0/openclaw-wargame-demo-1.3.0.jar
+  https://github.com/liugl951127/aiWar/releases/download/v1.4.0/openclaw-wargame-demo-1.4.0.jar
 
 # 命令行对战
 java -jar wargame.jar 42 25
@@ -196,6 +196,7 @@ WebSocket (port 18081)：
 
 ## 📜 版本历史
 
+- **v1.4.0** (2026-06-25) — 战斗回放系统 + RL 训练曲线大屏 + 微基准工具
 - **v1.3.0** (2026-06-25) — WebSocket 毫秒级实时推送 + Docker 一键部署 + GitHub Actions CI + Q 表 CSV 导出
 - **v1.2.0** (2026-06-25) — AI 战术顾问 + 战场优势增强 + Buff 系统 + Web 集成
 - **v1.1.0** (2026-06-25) — 强化学习 (Q-Learning) + Web 可视化 + 3 套 AI 大脑切换
@@ -211,7 +212,8 @@ WebSocket (port 18081)：
 - ✅ V1.1 — RL + Web 可视化
 - ✅ V1.2 — AI 战术顾问 + Buff
 - ✅ V1.3 — WebSocket 推送 + Docker + CI
-- 🔜 V1.4 — DQN 深度强化学习
+- ✅ V1.4 — 战斗回放 + 训练曲线可视化 + 微基准
+- 🔜 V1.5 — DQN 深度强化学习
 - 🔜 V1.5 — 真实地图接入 (OpenStreetMap)
 - 🔜 V2.0 — 真实武器 API 集成
 

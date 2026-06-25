@@ -30,9 +30,21 @@ class WargameServerTest {
     void setUp() throws IOException, InterruptedException {
         holder = new BattleStateHolder();
         bus = new BattleEventBus(64, BattleEventBus.BackpressurePolicy.BLOCK);
-        port = 18080 + (int) (Math.random() * 100);
-        server = new WargameServer(port, holder, bus);
-        server.start();
+        // 多轮随机避开端口冲突（偶发同时跑测试抢同一端口）
+        java.net.BindException last = null;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            port = 18080 + (int) (java.util.concurrent.ThreadLocalRandom.current().nextInt(0, 200));
+            try {
+                server = new WargameServer(port, holder, bus);
+                server.start();
+                last = null;
+                break;
+            } catch (java.net.BindException e) {
+                last = e;
+                try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+            }
+        }
+        if (last != null) throw last;
         // 给点时间 bind
         Thread.sleep(100);
     }
@@ -100,6 +112,22 @@ class WargameServerTest {
     void eventsEndpointReturns() throws Exception {
         String body = httpGet(URI.create("http://localhost:" + port + "/api/events").toURL());
         assertTrue(body.contains("\"events\""));
+    }
+
+    @Test
+    void trainingEndpointEmpty() throws Exception {
+        // 默认 supplier 为 null：返回 {"episodes":[]}
+        String body = httpGet(URI.create("http://localhost:" + port + "/api/training").toURL());
+        assertEquals("{\"episodes\":[]}", body);
+    }
+
+    @Test
+    void trainingEndpointCustomJson() throws Exception {
+        server.setTrainingHistorySupplier(
+                () -> "{\"episodes\":[{\"e\":1,\"r\":100.5}],\"q\":2.5}");
+        String body = httpGet(URI.create("http://localhost:" + port + "/api/training").toURL());
+        assertTrue(body.contains("\"r\":100.5"));
+        assertTrue(body.contains("\"q\":2.5"));
     }
 
     private String httpGet(URL url) throws IOException {

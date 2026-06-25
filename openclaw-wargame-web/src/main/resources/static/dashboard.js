@@ -21,6 +21,11 @@ const redAdvantageEl = document.getElementById('redAdvantage');
 const blueAdvicesEl = document.getElementById('blueAdvices');
 const redAdvicesEl = document.getElementById('redAdvices');
 const eventsEl = document.getElementById('events');
+const trainEpisodesEl = document.getElementById('trainEpisodes');
+const trainAvgRewardEl = document.getElementById('trainAvgReward');
+const trainEpsilonEl = document.getElementById('trainEpsilon');
+const trainCurveEl = document.getElementById('trainCurve');
+const trainEmptyEl = document.getElementById('trainEmpty');
 const wsIndicatorEl = document.getElementById('wsIndicator');
 
 let lastState = null;
@@ -98,9 +103,11 @@ async function pollOnce() {
       fetch('/api/analysis/red').then(r => r.json()).catch(() => null),
       fetch('/api/advisory/blue').then(r => r.json()).catch(() => null),
       fetch('/api/advisory/red').then(r => r.json()).catch(() => null),
-      fetch('/api/events').then(r => r.json()).catch(() => ({ events: [] }))
+      fetch('/api/events').then(r => r.json()).catch(() => ({ events: [] })),
+      fetch('/api/training').then(r => r.json()).catch(() => ({ episodes: [] }))
     ]);
     render(snapRes, blueRes, redRes, blueAdvRes, redAdvRes, evRes);
+    renderTraining(snapRes, evRes, null);
   } catch (e) {
     statusEl.textContent = 'disconnected';
     statusEl.className = 'badge badge-stop';
@@ -334,6 +341,74 @@ function drawMap(snap) {
 }
 
 // === 启动 ===
+
+// === 训练曲线渲染 ===
+function renderTraining(snap, events, training) {
+  // 训练数据可通过 /api/training 取得
+  if (!training || !training.episodes || training.episodes.length === 0) {
+    trainEmptyEl.classList.remove('hidden');
+    trainCurveEl.classList.add('hidden');
+    return;
+  }
+  trainEmptyEl.classList.add('hidden');
+  trainCurveEl.classList.remove('hidden');
+
+  const eps = training.episodes;
+  const last = eps[eps.length - 1];
+  // 统计
+  trainEpisodesEl.textContent = eps.length;
+  const totalReward = eps.reduce((a, e) => a + (e.r || 0), 0);
+  trainAvgRewardEl.textContent = (totalReward / eps.length).toFixed(1);
+  trainEpsilonEl.textContent = last.epsilon != null ? last.epsilon.toFixed(3) : '-';
+
+  // 画 SVG 线图
+  const W = 300, H = 100, padX = 8, padY = 8;
+  const xs = eps.map((e, i) => i);
+  const ys = eps.map(e => e.r || 0);
+  const xMin = 0, xMax = Math.max(1, eps.length - 1);
+  const yMin = Math.min(0, ...ys), yMax = Math.max(0, ...ys);
+  const yRange = Math.max(1, yMax - yMin);
+  const xScale = i => padX + (i - xMin) / (xMax - xMin) * (W - 2 * padX);
+  const yScale = y => H - padY - (y - yMin) / yRange * (H - 2 * padY);
+
+  // line path
+  let path = '';
+  let fill = `M ${padX} ${H - padY} L `;
+  eps.forEach((e, i) => {
+    const x = xScale(i);
+    const y = yScale(e.r || 0);
+    if (i === 0) path += `M ${x} ${y}`;
+    else path += ` L ${x} ${y}`;
+    fill += `${x} ${y} L `;
+  });
+  fill += `${xScale(eps.length - 1)} ${H - padY} Z`;
+
+  // zero line
+  let zeroY = null;
+  if (yMin < 0 && yMax > 0) {
+    zeroY = yScale(0);
+  }
+
+  trainCurveEl.innerHTML = `
+    <line class="axis" x1="${padX}" y1="${H - padY}" x2="${W - padX}" y2="${H - padY}" />
+    <line class="axis" x1="${padX}" y1="${padY}" x2="${padX}" y2="${H - padY}" />
+    ${zeroY != null ? `<line class="axis" stroke-dasharray="2,2" x1="${padX}" y1="${zeroY}" x2="${W - padX}" y2="${zeroY}" />` : ''}
+    <path class="reward-fill" d="${fill}" />
+    <path class="reward-line" d="${path}" />
+    ${eps.map((e, i) => `<circle class="dot" cx="${xScale(i)}" cy="${yScale(e.r || 0)}" r="1.5" />`).join('')}
+  `;
+}
+
+let _lastTraining = { episodes: [] };
+async function fetchTrainingAndRender() {
+  try {
+    const t = await fetch('/api/training').then(r => r.json());
+    _lastTraining = t;
+    renderTraining(null, null, t);
+  } catch (e) { /* ignore */ }
+}
+setInterval(fetchTrainingAndRender, 2000);
+fetchTrainingAndRender();
 
 connectWebSocket();
 // 启动 polling 作为 fallback（即使 WS 工作也保留，让 advices/events 完整刷新）

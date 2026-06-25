@@ -35,13 +35,26 @@ class WebSocketServerTest {
     void setUp() throws IOException, InterruptedException {
         holder = new BattleStateHolder();
         bus = new BattleEventBus(64, BattleEventBus.BackpressurePolicy.BLOCK);
-        port = 19000 + (int) (Math.random() * 200);
-        httpServer = HttpServer.create(new InetSocketAddress(port), 0);
-        httpServer.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(2));
-        wsServer = new WebSocketServer(port, "/ws/snapshot", holder);
-        wsServer.attachTo(httpServer);
-        wsServer.startBroadcaster(50);
-        httpServer.start();
+        // 偶发端口冲突（多测试并发）— 重试几次
+        java.net.BindException last = null;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            port = 19000 + (int) (java.util.concurrent.ThreadLocalRandom.current().nextInt(0, 400));
+            try {
+                httpServer = HttpServer.create(new InetSocketAddress(port), 0);
+                httpServer.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(2));
+                wsServer = new WebSocketServer(port, "/ws/snapshot", holder);
+                wsServer.attachTo(httpServer);
+                wsServer.startBroadcaster(50);
+                httpServer.start();
+                last = null;
+                break;
+            } catch (java.net.BindException e) {
+                last = e;
+                try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                if (httpServer != null) httpServer.stop(0);
+            }
+        }
+        if (last != null) throw last;
         Thread.sleep(100);
     }
 

@@ -1,9 +1,9 @@
-# OpenClaw Wargame — Project Status (v1.3.0)
+# OpenClaw Wargame — Project Status (v1.4.0)
 
-> 实时战争战场分析 + 战争无人化 + 自动决策与反击 + AI 战术顾问与战场优势增强 + WebSocket 毫秒级推送 + Docker 一键部署
+> 实时战争战场分析 + 战争无人化 + 自动决策与反击 + AI 战术顾问与战场优势增强 + WebSocket 毫秒级推送 + Docker 一键部署 + 战斗回放 + 训练曲线可视化
 
 **仓库**：https://github.com/liugl951127/aiWar
-**最新 Release**：https://github.com/liugl951127/aiWar/releases/tag/v1.3.0
+**最新 Release**：https://github.com/liugl951127/aiWar/releases/tag/v1.4.0
 **License**：Apache 2.0
 
 ---
@@ -21,19 +21,21 @@
 | 毫秒级实时推送 (V1.3) | ✅ | `WebSocketServer` 替代轮询 |
 | 一键容器化部署 (V1.3) | ✅ | `Dockerfile` + `docker-compose.yml` |
 | 持续集成 (V1.3) | ✅ | GitHub Actions CI |
+| 战斗回放 (V1.4) | ✅ | `BattleRecorder` JSON Lines + `--record`/`--replay` |
+| RL 训练可视化 (V1.4) | ✅ | `/api/training` 端点 + 大屏 SVG 折线图 |
 
 ---
 
 ## 📊 项目数据
 
 ```
-总代码量    : ~6,500 行 Java
-Java 文件   : 68 (49 主代码 + 19 测试 + 3 资源)
+总代码量    : ~7,500 行 Java
+Java 文件   : 76 (54 主代码 + 22 测试 + 3 资源)
 Maven 模块  : 10
-测试用例    : 98 (全部通过)
-测试覆盖    : 8 个模块有独立测试
-Git 提交    : 5 commits
-GitHub Tags : v1.1.0, v1.2.0, v1.2.1, v1.3.0
+测试用例    : 109 (全部通过)
+测试覆盖    : 9 个模块有独立测试
+Git 提交    : 6 commits
+GitHub Tags : v1.1.0, v1.2.0, v1.2.1, v1.3.0, v1.4.0
 ```
 
 ### 按模块分布
@@ -251,6 +253,17 @@ java -jar openclaw-wargame-demo-1.2.0.jar 42 60 --rl --episodes 3 --web --port 1
 ---
 
 ## 📜 版本历史
+
+### v1.4.0 (2026-06-25) — 战斗回放 + 训练曲线
+
+新增：
+- `BattleRecorder` 序列化每 tick 到 JSON Lines
+- `BattleReplayer` 从 JSONL 恢复 `List<BattleState>`
+- `--record FILE` / `--replay FILE [--web]` CLI
+- `/api/training` 端点返回训练历史
+- Web 大屏 SVG 训练曲线（reward + ε）
+- 跨 episode QLearner 复用（持续学习）
+- `Bench` 微基准工具（无 JMH 依赖）
 
 ### v1.3.0 (2026-06-25) — WebSocket + Docker + CI
 

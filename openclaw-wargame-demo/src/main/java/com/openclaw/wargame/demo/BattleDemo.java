@@ -48,22 +48,37 @@ public final class BattleDemo {
         int rlEpisodes = 1;
         AutonomousCommander.DecisionMode blueMode = AutonomousCommander.DecisionMode.RULE;
         AutonomousCommander.DecisionMode redMode = AutonomousCommander.DecisionMode.RULE;
+        String recordPath = null;
+        String replayPath = null;
 
         // 解析参数
         int argIdx = 0;
-        if (args.length > argIdx) seed = Long.parseLong(args[argIdx++]);
-        if (args.length > argIdx) maxTicks = Integer.parseInt(args[argIdx++]);
         while (argIdx < args.length) {
-            switch (args[argIdx]) {
-                case "--web" -> webEnabled = true;
-                case "--port" -> webPort = Integer.parseInt(args[++argIdx]);
-                case "--rl" -> { rlEnabled = true; blueMode = AutonomousCommander.DecisionMode.RL; }
-                case "--hybrid" -> { rlEnabled = true; blueMode = AutonomousCommander.DecisionMode.HYBRID; }
-                case "--episodes" -> rlEpisodes = Integer.parseInt(args[++argIdx]);
-                case "--rl-red" -> redMode = AutonomousCommander.DecisionMode.RL;
-                default -> System.err.println("Unknown arg: " + args[argIdx]);
+            String a = args[argIdx];
+            if (a.startsWith("--")) {
+                switch (a) {
+                    case "--web" -> webEnabled = true;
+                    case "--port" -> webPort = Integer.parseInt(args[++argIdx]);
+                    case "--rl" -> { rlEnabled = true; blueMode = AutonomousCommander.DecisionMode.RL; }
+                    case "--hybrid" -> { rlEnabled = true; blueMode = AutonomousCommander.DecisionMode.HYBRID; }
+                    case "--episodes" -> rlEpisodes = Integer.parseInt(args[++argIdx]);
+                    case "--rl-red" -> redMode = AutonomousCommander.DecisionMode.RL;
+                    case "--record" -> recordPath = args[++argIdx];
+                    case "--replay" -> replayPath = args[++argIdx];
+                    default -> System.err.println("Unknown arg: " + a);
+                }
+                argIdx++;
+            } else {
+                if (argIdx == 0) seed = Long.parseLong(args[argIdx]);
+                else if (argIdx == 1) maxTicks = Integer.parseInt(args[argIdx]);
+                argIdx++;
             }
-            argIdx++;
+        }
+
+        // 回放模式
+        if (replayPath != null) {
+            runReplay(replayPath, webEnabled, webPort);
+            return;
         }
 
         System.out.println("===============================================================");
@@ -120,6 +135,10 @@ public final class BattleDemo {
         final int maxEpisodes = Math.max(1, rlEpisodes);
         BattleState finalState = initial;
         int blueWins = 0, redWins = 0;
+        // 跨 episode 保留 QLearner（持续训练同一个 Q 表）
+        final com.openclaw.wargame.rl.QLearner blueLearner = (rlEnabled)
+                ? new com.openclaw.wargame.rl.QLearner(seed)
+                : null;
         for (int ep = 0; ep < maxEpisodes; ep++) {
             final int currentEp = ep;
             if (maxEpisodes > 1) {
@@ -133,15 +152,28 @@ public final class BattleDemo {
             final long blueSeed = seed + currentEp;
             final long redSeed = seed + 100 + currentEp;
             final boolean singleEpisode = (maxEpisodes == 1);
-            AutonomyLoop blueLoop = AutonomyLoop.createWithMode(Team.BLUE, sim, clock, bus, blueSeed,
-                    blueMode, rlEnabled);
-            AutonomyLoop redLoop = AutonomyLoop.createWithMode(Team.RED, sim, clock, bus, redSeed,
+            final AutonomyLoop blueLoop = (blueLearner != null)
+                    ? AutonomyLoop.createWithLearner(Team.BLUE, sim, clock, bus, blueSeed,
+                            blueMode, rlEnabled, blueLearner)
+                    : AutonomyLoop.createWithMode(Team.BLUE, sim, clock, bus, blueSeed,
+                            blueMode, rlEnabled);
+            final AutonomyLoop redLoop = AutonomyLoop.createWithMode(Team.RED, sim, clock, bus, redSeed,
                     redMode, rlEnabled);
+            // 在 RL 模式 + web 模式下，暴露训练历史 JSON（用持续的 blueLearner）
+            if (webEnabled && rlEnabled && blueLearner != null) {
+                webServer.setTrainingHistorySupplier(() -> buildTrainingJson(blueLearner.getTrainingHistory()));
+            }
 
             holder.setRunning(true);
             final com.openclaw.wargame.autonomy.BattleRunner.AdvisorSink sink = (webEnabled)
                     ? (report, team) -> holder.setReport(team, report)
                     : null;
+            com.openclaw.wargame.simulation.BattleRecorder recorder = (recordPath != null)
+                    ? new com.openclaw.wargame.simulation.BattleRecorder(java.nio.file.Paths.get(recordPath))
+                    : null;
+            if (recorder != null) {
+                System.out.println("Recording to " + recordPath);
+            }
             BattleRunner runner = new BattleRunner(sim, clock, bus, blueLoop, redLoop, maxTicks, state -> {
                 holder.set(state);
                 if (state.tick() % 10 == 0 && singleEpisode) {
@@ -149,8 +181,9 @@ public final class BattleDemo {
                     printSituation(state, Team.RED);
                     System.out.println("---------------------------------------------------------------");
                 }
-            }, sink);
+            }, sink, recorder);
             finalState = runner.run(init);
+            if (recorder != null) recorder.close();
             holder.setRunning(false);
 
             long ba = finalState.aliveCount(Team.BLUE);
@@ -264,5 +297,69 @@ public final class BattleDemo {
         System.out.printf("  Red wins:  %d (%.1f%%)%n", redWins, 100.0 * redWins / episodes);
         System.out.printf("  Draws:     %d%n", episodes - blueWins - redWins);
         System.out.println("===============================================================");
+    }
+
+    /** 回放一个 BattleRecorder JSON Lines 文件 */
+    private static void runReplay(String replayPath, boolean webEnabled, int webPort) throws Exception {
+        System.out.println("===============================================================");
+        System.out.println("  OpenClaw Wargame - Replay Mode");
+        System.out.println("  file=" + replayPath + (webEnabled ? "  WEB=http://localhost:" + webPort : ""));
+        System.out.println("===============================================================");
+
+        java.util.List<BattleState> states = com.openclaw.wargame.simulation.BattleRecorder.readAll(
+                java.nio.file.Paths.get(replayPath));
+        System.out.println("Loaded " + states.size() + " ticks from " + replayPath);
+
+        if (states.isEmpty()) {
+            System.out.println("Nothing to replay.");
+            return;
+        }
+
+        BattleEventBus bus = new BattleEventBus(1024, BattleEventBus.BackpressurePolicy.BLOCK);
+        BattleStateHolder holder = new BattleStateHolder();
+        WargameServer webServer = null;
+        if (webEnabled) {
+            webServer = new WargameServer(webPort, holder, bus);
+            webServer.start();
+            System.out.println("Web replay at http://localhost:" + webPort + "/");
+        }
+
+        holder.setRunning(true);
+        long sleepPerTickMs = 100;
+        for (int i = 0; i < states.size(); i++) {
+            BattleState s = states.get(i);
+            holder.set(s);
+            if (i % 10 == 0) {
+                System.out.printf("[replay] tick=%d time=%.1fs blue=%d red=%d%n",
+                        s.tick(), s.timeSeconds(), s.aliveCount(Team.BLUE), s.aliveCount(Team.RED));
+            }
+            if (webEnabled) {
+                try { Thread.sleep(sleepPerTickMs); } catch (InterruptedException e) { break; }
+            }
+        }
+        holder.setRunning(false);
+        long ba = states.get(states.size() - 1).aliveCount(Team.BLUE);
+        long ra = states.get(states.size() - 1).aliveCount(Team.RED);
+        System.out.println("Replay complete. Final: blue=" + ba + " red=" + ra);
+
+        if (webEnabled) {
+            System.out.println("Press Ctrl+C to exit...");
+            Thread.currentThread().join();
+        }
+        if (webServer != null) webServer.stop();
+    }
+
+    /** 构建训练历史 JSON（供 /api/training） */
+    private static String buildTrainingJson(java.util.List<com.openclaw.wargame.rl.QLearner.TrainingStats> history) {
+        StringBuilder sb = new StringBuilder("{\"episodes\":[");
+        for (int i = 0; i < history.size(); i++) {
+            if (i > 0) sb.append(",");
+            com.openclaw.wargame.rl.QLearner.TrainingStats s = history.get(i);
+            sb.append(String.format(
+                    "{\"e\":%d,\"r\":%.2f,\"q\":%d,\"eps\":%.4f,\"u\":%d}",
+                    s.episode(), s.totalReward(), s.tableSize(), s.epsilon(), s.updates()));
+        }
+        sb.append("]}");
+        return sb.toString();
     }
 }

@@ -206,3 +206,33 @@ body {
 .event-list li .kind.DECISION_MADE { background: #9c27b0; }
 .event-list li .kind.UNIT_MOVED { background: #607d8b; }
 .event-list li .tick { color: #9fb1d6; font-variant-numeric: tabular-nums; margin-left: 8px; }
+
+/* Training curve card */
+.train-summary {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9fb1d6;
+  margin-bottom: 6px;
+}
+.train-summary b { color: #fff; font-variant-numeric: tabular-nums; }
+.train-curve {
+  width: 100%;
+  height: 100px;
+  background: #0a1426;
+  border-radius: 4px;
+  border: 1px solid #2a3a64;
+}
+.train-curve .axis { stroke: #2a3a64; stroke-width: 0.5; }
+.train-curve .reward-line { fill: none; stroke: #4fc3f7; stroke-width: 1.5; }
+.train-curve .reward-fill { fill: #4fc3f7; opacity: 0.18; }
+.train-curve .dot { fill: #4fc3f7; }
+.train-empty {
+  font-size: 11px;
+  color: #9fb1d6;
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+}
+.train-empty.hidden { display: none; }
+.train-curve.hidden { display: none; }

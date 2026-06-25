@@ -61,6 +61,17 @@
         <h2>📜 Recent Events</h2>
         <ul id="events" class="event-list"></ul>
       </div>
+
+      <div class="card">
+        <h2>📈 Training Curve (RL)</h2>
+        <div class="train-summary">
+          <span>episodes: <b id="trainEpisodes">0</b></span>
+          <span>avg reward: <b id="trainAvgReward">-</b></span>
+          <span>current ε: <b id="trainEpsilon">-</b></span>
+        </div>
+        <svg id="trainCurve" class="train-curve" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <div class="train-empty" id="trainEmpty">No training data yet (run with <code>--rl --episodes N</code>)</div>
+      </div>
     </aside>
   </main>
 

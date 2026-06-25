@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-06-25
+
+### Added
+- **BattleRecorder / BattleReplayer** — JSON Lines 格式录制战斗每 tick（含单位/武器/buff），并支持离线回放
+  - `BattleRecorder.writeHeader()` / `recordTick()` / `writeEnd()`（implements AutoCloseable）
+  - `BattleRecorder.readAll(file)` 反序列化回 `List<BattleState>`
+  - CLI：`--record FILE` 生成、`--replay FILE [--web]` 回放
+- **`/api/training` 端点** — RL 训练历史 JSON（episode / reward / Q 表大小 / ε / updates）
+  - `WargameServer.setTrainingHistorySupplier(Supplier<String>)`
+  - Demo 在 `--rl` + `--web` 模式下自动绑定
+- **Web 大屏训练曲线** — SVG 折线图 + 总奖励均值 + 当前 ε
+- **`QLearner.endEpisode(double totalReward)`** — episode 结束记录到 `trainingHistory`
+- **`QLearner.getTrainingHistory()`** — `Collections.unmodifiableList<TrainingStats>`
+- **`AutonomyLoop.createWithLearner(...)`** — 跨 episode 复用同一个 QLearner（持续学习）
+- **`BattleRunner` 录制模式** — 可选 `BattleRecorder` 参数，写 header / tick / end 自动
+- **`Bench` + `BenchDemo`** — 轻量级微基准工具（无 JMH 依赖）
+  - `Bench.run(label, n, warmup, Runnable)` → 统计 mean/median/min/max/std
+
+### Changed
+- **参数解析** — `--record/--replay` 可出现在任意位置（不再依赖 seed/maxTicks 位置）
+- **测试端口分配** — `ThreadLocalRandom` + 10 次重试避免并发测试偶发 BindException
+
+### Stats
+- Tests: 98 → **109** (+11: 4 recorder + 5 bench + 2 training API)
+- Java files: 68 → 76 (+8: BattleRecorder + test + Bench + test + BenchDemo + 2 modified)
+- Code: ~6,500 → ~7,500 lines
+
 ## [1.3.0] - 2026-06-25
 
 ### Added

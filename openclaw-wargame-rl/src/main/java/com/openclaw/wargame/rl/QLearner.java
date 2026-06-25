@@ -116,8 +116,14 @@ public final class QLearner {
      * 一个 episode 结束时调用，衰减 ε。
      */
     public void endEpisode() {
+        endEpisode(0.0);
+    }
+
+    /** 带总奖励的 episode 结束（会记录到 trainingHistory） */
+    public void endEpisode(double totalReward) {
         episodeCount++;
         epsilon = Math.max(MIN_EPSILON, epsilon * epsilonDecay);
+        recordEpisodeStats(totalReward);
     }
 
     /**
