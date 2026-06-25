@@ -101,19 +101,90 @@ body {
 .stat-row span { color: #9fb1d6; }
 .stat-row b { color: #fff; font-variant-numeric: tabular-nums; }
 
-.threat-list, .event-list {
+.threat-list, .event-list, .advice-list {
   list-style: none;
   padding: 0;
   margin: 0;
   font-size: 12px;
 }
-.threat-list li, .event-list li {
+.threat-list li, .event-list li, .advice-list li {
   padding: 6px 8px;
   margin-bottom: 4px;
   background: #0a1426;
   border-radius: 4px;
   display: flex;
   justify-content: space-between;
+}
+.advice-list li {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.advice-list .advice-kind {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  align-self: flex-start;
+}
+.advice-kind.ATTACK { background: #f44336; }
+.advice-kind.DEFEND { background: #2196f3; }
+.advice-kind.RETREAT { background: #ff9800; }
+.advice-kind.FLANK { background: #9c27b0; }
+.advice-kind.COORDINATE_FIRE { background: #e91e63; }
+.advice-kind.EMERGENCY_RETREAT { background: #b71c1c; }
+.advice-kind.RESUPPLY { background: #00bcd4; }
+.advice-kind.RECON { background: #4caf50; }
+.advice-kind.STAND_DOWN { background: #607d8b; }
+.advice-list .reason {
+  color: #9fb1d6;
+  font-size: 11px;
+  font-style: italic;
+}
+.advice-list .priority {
+  font-weight: 600;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.advantage-bar {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.advantage-bar .row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+}
+.advantage-bar .label {
+  width: 60px;
+  color: #9fb1d6;
+}
+.advantage-bar .bar {
+  flex: 1;
+  height: 8px;
+  background: #0a1426;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.advantage-bar .bar > div {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+.advantage-bar .val {
+  width: 40px;
+  text-align: right;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.advantage-bar .overall {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #2a3a64;
+  font-weight: 600;
 }
 .event-list li .kind {
   font-weight: 600;

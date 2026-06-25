@@ -43,6 +43,9 @@ public final class Simulator {
         for (Unit u : state.units()) {
             if (!u.isAlive()) { nextUnits.add(u); continue; }
             Unit copy = shallowCopy(u);
+            // 推进 buff 衰减
+            copy.tickBuffs();
+
             // 推进
             if (copy.moveTarget() != null) {
                 double factor = state.map().worstMovementFactor(copy.position(), copy.moveTarget(), 5);
@@ -110,6 +113,11 @@ public final class Simulator {
             int delta = w.ammo() - w.maxAmmo();
             if (delta != 0) wc.resupply(delta);
             copy.mountWeapon(wc);
+        }
+        // 复制 buffs
+        for (var b : u.buffs()) {
+            copy.applyBuff(new com.openclaw.wargame.core.unit.Buff(
+                    b.kind(), b.multiplier(), b.durationTicks(), b.source()));
         }
         if (u.moveTarget() != null) copy.setMoveTarget(u.moveTarget());
         copy.setStatusInternal(u.status());

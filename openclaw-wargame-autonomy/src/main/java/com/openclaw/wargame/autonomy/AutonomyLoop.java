@@ -4,6 +4,7 @@ import com.openclaw.wargame.ai.rules.DefaultRules;
 import com.openclaw.wargame.ai.rules.RuleEngine;
 import com.openclaw.wargame.ai.mcts.MonteCarloTreeSearch;
 import com.openclaw.wargame.ai.decision.DecisionPlan;
+import com.openclaw.wargame.analysis.TacticalAdvisor;
 import com.openclaw.wargame.core.state.BattleState;
 import com.openclaw.wargame.core.team.Team;
 import com.openclaw.wargame.realtime.BattleClock;
@@ -47,9 +48,11 @@ public final class AutonomyLoop {
     private final Simulator simulator;
     private final BattleClock clock;
     private final BattleEventBus eventBus;
+    private final TacticalAdvisor advisor;
 
     private DecisionPlan lastPlan;
     private long lastDecisionTick = -1;
+    private TacticalAdvisor.AdvisoryReport lastReport;
 
     public AutonomyLoop(Team team,
                         AutonomousCommander commander,
@@ -57,7 +60,8 @@ public final class AutonomyLoop {
                         WeaponScheduler weaponScheduler,
                         Simulator simulator,
                         BattleClock clock,
-                        BattleEventBus eventBus) {
+                        BattleEventBus eventBus,
+                        TacticalAdvisor advisor) {
         this.team = team;
         this.commander = commander;
         this.fireControl = fireControl;
@@ -65,11 +69,14 @@ public final class AutonomyLoop {
         this.simulator = simulator;
         this.clock = clock;
         this.eventBus = eventBus;
+        this.advisor = advisor;
     }
 
     public Team team() { return team; }
     public DecisionPlan lastPlan() { return lastPlan; }
     public AutonomousCommander commander() { return commander; }
+    public TacticalAdvisor advisor() { return advisor; }
+    public TacticalAdvisor.AdvisoryReport lastReport() { return lastReport; }
 
     /**
      * 标准工厂：构造一个配置好的自主循环（默认使用规则引擎）。
@@ -105,7 +112,8 @@ public final class AutonomyLoop {
         RulesOfEngagement roe = new RulesOfEngagement().setMode(RulesOfEngagement.Mode.WEAPONS_FREE);
         FireControlComputer fcc = new FireControlComputer(roe);
         WeaponScheduler ws = new WeaponScheduler(bus, seed + 1);
-        return new AutonomyLoop(team, cmd, fcc, ws, simulator, clock, bus);
+        TacticalAdvisor advisor = new TacticalAdvisor(team);
+        return new AutonomyLoop(team, cmd, fcc, ws, simulator, clock, bus, advisor);
     }
 
     /**
@@ -115,7 +123,12 @@ public final class AutonomyLoop {
         // 1. Observe: 取最近事件（已经在 eventBus 中）
         List<BattleEvent> recent = eventBus.recent(64);
 
-        // 2. Orient: 分析威胁（已经隐含在 rules.decide 中）
+        // 2. Orient: TacticalAdvisor 生成建议 + Buff 分配
+        TacticalAdvisor.AdvisoryReport report = advisor.advise(state);
+        lastReport = report;
+        // 应用 buff 到 state（在 commander 命令前应用，让命令考虑 buff 后的属性）
+        TacticalAdvisor.applyBuffs(state, report.buffAssignments());
+
         // 3. Decide: 规则 + MCTS
         DecisionPlan plan = commander.command(state);
         lastPlan = plan;

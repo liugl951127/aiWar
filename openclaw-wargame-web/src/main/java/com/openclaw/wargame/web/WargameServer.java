@@ -3,7 +3,9 @@ package com.openclaw.wargame.web;
 import com.openclaw.wargame.core.coord.Position;
 import com.openclaw.wargame.core.state.BattleState;
 import com.openclaw.wargame.core.team.Team;
+import com.openclaw.wargame.core.unit.Buff;
 import com.openclaw.wargame.core.unit.Unit;
+import com.openclaw.wargame.realtime.BattleEvent;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
@@ -53,6 +55,7 @@ public final class WargameServer {
         server.createContext("/api/state", this::handleState);
         server.createContext("/api/snapshot", this::handleSnapshot);
         server.createContext("/api/analysis", this::handleAnalysis);
+        server.createContext("/api/advisory", this::handleAdvisory);
         server.createContext("/api/events", this::handleEvents);
         server.createContext("/static", this::handleStatic);
         server.createContext("/", this::handleRoot);
@@ -148,6 +151,61 @@ public final class WargameServer {
         send(ex, 200, "application/json", sb.toString());
     }
 
+    private void handleAdvisory(HttpExchange ex) throws IOException {
+        String path = ex.getRequestURI().getPath();
+        Team team;
+        if (path.endsWith("/blue")) team = Team.BLUE;
+        else if (path.endsWith("/red")) team = Team.RED;
+        else {
+            send(ex, 400, "application/json", "{\"error\":\"specify /blue or /red\"}");
+            return;
+        }
+        var report = holder.getReport(team);
+        if (report == null) {
+            send(ex, 200, "application/json", "{\"error\":\"no advisory report\"}");
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        sb.append("\"team\":\"").append(team.name()).append("\"");
+        var adv = report.advantage();
+        sb.append(",\"advantage\":{")
+          .append("\"firepower\":").append(adv.firepower())
+          .append(",\"manpower\":").append(adv.manpower())
+          .append(",\"detection\":").append(adv.detection())
+          .append(",\"mobility\":").append(adv.mobility())
+          .append(",\"cohesion\":").append(adv.cohesion())
+          .append(",\"overall\":").append(adv.overall())
+          .append("}");
+        sb.append(",\"advices\":[");
+        var advices = report.advices();
+        for (int i = 0; i < advices.size(); i++) {
+            if (i > 0) sb.append(",");
+            var a = advices.get(i);
+            sb.append("{\"kind\":\"").append(a.kind()).append("\"")
+              .append(",\"priority\":").append(a.priority())
+              .append(",\"reason\":\"").append(jsonEscape(a.reason())).append("\"}");
+        }
+        sb.append("]");
+        sb.append(",\"buffAssignments\":[");
+        var buffs = report.buffAssignments();
+        for (int i = 0; i < buffs.size(); i++) {
+            if (i > 0) sb.append(",");
+            var b = buffs.get(i);
+            sb.append("{\"unit\":\"").append(b.unitId().substring(0, 8)).append("\"")
+              .append(",\"buff\":\"").append(b.buffKind()).append("\"")
+              .append(",\"multiplier\":").append(b.multiplier())
+              .append(",\"duration\":").append(b.duration())
+              .append("}");
+        }
+        sb.append("]}");
+        send(ex, 200, "application/json", sb.toString());
+    }
+
+    private static String jsonEscape(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+    }
+
     private void handleEvents(HttpExchange ex) throws IOException {
         var events = eventBus.recent(50);
         StringBuilder sb = new StringBuilder();
@@ -239,6 +297,18 @@ public final class WargameServer {
           .append(",\"maxHp\":").append(u.maxHp())
           .append(",\"status\":\"").append(u.status().name()).append("\"")
           .append(",\"alive\":").append(u.isAlive());
+        // buffs
+        sb.append(",\"buffs\":[");
+        boolean firstBuff = true;
+        for (var b : u.buffs()) {
+            if (!firstBuff) sb.append(",");
+            firstBuff = false;
+            sb.append("{\"kind\":\"").append(b.kind()).append("\"")
+              .append(",\"multiplier\":").append(b.multiplier())
+              .append(",\"duration\":").append(b.durationTicks())
+              .append("}");
+        }
+        sb.append("]");
         return sb.append("}").toString();
     }
 

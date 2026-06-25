@@ -139,6 +139,9 @@ public final class BattleDemo {
                     redMode, rlEnabled);
 
             holder.setRunning(true);
+            final com.openclaw.wargame.autonomy.BattleRunner.AdvisorSink sink = (webEnabled)
+                    ? (report, team) -> holder.setReport(team, report)
+                    : null;
             BattleRunner runner = new BattleRunner(sim, clock, bus, blueLoop, redLoop, maxTicks, state -> {
                 holder.set(state);
                 if (state.tick() % 10 == 0 && singleEpisode) {
@@ -146,7 +149,7 @@ public final class BattleDemo {
                     printSituation(state, Team.RED);
                     System.out.println("---------------------------------------------------------------");
                 }
-            });
+            }, sink);
             finalState = runner.run(init);
             holder.setRunning(false);
 

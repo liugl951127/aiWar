@@ -23,10 +23,23 @@ public final class BattleRunner {
     private final AutonomyLoop red;
     private final int maxTicks;
     private final Consumer<BattleState> onTick;
+    /** 可选：写入 Advisor 报告用于 Web 展示 */
+    private final AdvisorSink advisorSink;
+
+    public interface AdvisorSink {
+        void publish(com.openclaw.wargame.analysis.TacticalAdvisor.AdvisoryReport report, Team team);
+    }
 
     public BattleRunner(Simulator simulator, BattleClock clock, BattleEventBus eventBus,
                         AutonomyLoop blue, AutonomyLoop red,
                         int maxTicks, Consumer<BattleState> onTick) {
+        this(simulator, clock, eventBus, blue, red, maxTicks, onTick, null);
+    }
+
+    public BattleRunner(Simulator simulator, BattleClock clock, BattleEventBus eventBus,
+                        AutonomyLoop blue, AutonomyLoop red,
+                        int maxTicks, Consumer<BattleState> onTick,
+                        AdvisorSink advisorSink) {
         this.simulator = simulator;
         this.clock = clock;
         this.eventBus = eventBus;
@@ -34,6 +47,7 @@ public final class BattleRunner {
         this.red = red;
         this.maxTicks = maxTicks;
         this.onTick = onTick;
+        this.advisorSink = advisorSink;
     }
 
     public BattleState run(BattleState initial) {
@@ -44,6 +58,11 @@ public final class BattleRunner {
             state = red.tick(state);
             // 推进时钟
             clock.advance();
+            // 发布 advisor 报告
+            if (advisorSink != null) {
+                if (blue.lastReport() != null) advisorSink.publish(blue.lastReport(), Team.BLUE);
+                if (red.lastReport() != null) advisorSink.publish(red.lastReport(), Team.RED);
+            }
             // 回调
             if (onTick != null) onTick.accept(state);
             // 胜负判定

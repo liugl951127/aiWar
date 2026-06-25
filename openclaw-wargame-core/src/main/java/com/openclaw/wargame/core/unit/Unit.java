@@ -25,9 +25,10 @@ public final class Unit {
     private final String id;
     private final UnitType type;
     private final Team team;
-    private final double maxHp;
+    private final double baseMaxHp;
     private final double baseSpeed;
     private final double baseDetectionRange;
+    private final double baseFirepower;
 
     private Position position;
     private double hp;
@@ -35,18 +36,22 @@ public final class Unit {
     private UnitStatus status;
     /** 当前移动目标（null 表示静止） */
     private Position moveTarget;
+    /** 当前 Buff 列表（按 tick 衰减） */
+    private final List<Buff> buffs;
 
     public Unit(String id, UnitType type, Team team, Position position) {
         this.id = Objects.requireNonNull(id);
         this.type = Objects.requireNonNull(type);
         this.team = Objects.requireNonNull(team);
         this.position = Objects.requireNonNull(position);
-        this.maxHp = type.baseArmor();
-        this.hp = maxHp;
+        this.baseMaxHp = type.baseArmor();
+        this.hp = baseMaxHp;
         this.baseSpeed = type.baseSpeed();
         this.baseDetectionRange = type.baseDetectionRange();
+        this.baseFirepower = type.baseFirepower();
         this.weapons = new ArrayList<>();
         this.status = UnitStatus.IDLE;
+        this.buffs = new ArrayList<>();
     }
 
     public static Unit create(UnitType type, Team team, Position position) {
@@ -74,19 +79,55 @@ public final class Unit {
     }
 
     public double maxHp() {
-        return maxHp;
+        return baseMaxHp * (1 + totalBuffMultiplier(Buff.Kind.ARMOR));
     }
 
+    /** 原始（未加 buff 的）maxHp，用于内部同步 */
+    public double baseMaxHp() { return baseMaxHp; }
+
     public double hpRatio() {
-        return hp / maxHp;
+        return hp / maxHp();
     }
 
     public double baseSpeed() {
         return baseSpeed;
     }
 
+    /** 当前实际速度（含 buff） */
+    public double effectiveSpeed() {
+        return baseSpeed * (1 + totalBuffMultiplier(Buff.Kind.SPEED));
+    }
+
     public double baseDetectionRange() {
         return baseDetectionRange;
+    }
+
+    /** 当前实际探测范围（含 buff） */
+    public double effectiveDetectionRange() {
+        return baseDetectionRange * (1 + totalBuffMultiplier(Buff.Kind.DETECTION));
+    }
+
+    /** 当前实际火力（含 buff） */
+    public double effectiveFirepower() {
+        return baseFirepower * (1 + totalBuffMultiplier(Buff.Kind.FIREPOWER));
+    }
+
+    /** 伪装（stealth）buff 总和：值越大越难被探测到 */
+    public double stealthFactor() {
+        return totalBuffMultiplier(Buff.Kind.STEALTH);
+    }
+
+    /** 压制（suppression）buff 总和：值越大越影响敌方命中率 */
+    public double suppressionFactor() {
+        return totalBuffMultiplier(Buff.Kind.SUPPRESSION);
+    }
+
+    private double totalBuffMultiplier(Buff.Kind kind) {
+        double total = 0;
+        for (Buff b : buffs) {
+            if (b.kind() == kind) total += b.multiplier();
+        }
+        return total;
     }
 
     public UnitStatus status() {
@@ -99,6 +140,20 @@ public final class Unit {
 
     public List<Weapon> weapons() {
         return Collections.unmodifiableList(weapons);
+    }
+
+    public List<Buff> buffs() {
+        return Collections.unmodifiableList(buffs);
+    }
+
+    /** 加一个 Buff */
+    public void applyBuff(Buff buff) {
+        buffs.add(Objects.requireNonNull(buff));
+    }
+
+    /** 推进一个 tick：buff 衰减 */
+    public void tickBuffs() {
+        buffs.removeIf(b -> !b.tick());
     }
 
     public boolean isAlive() {
@@ -188,7 +243,7 @@ public final class Unit {
      */
     public void repair(double amount) {
         if (!isAlive()) return;
-        hp = Math.min(maxHp, hp + amount);
+        hp = Math.min(maxHp(), hp + amount);
         if (status == UnitStatus.DESTROYED) {
             status = UnitStatus.IDLE;
         }

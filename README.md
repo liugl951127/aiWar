@@ -2,11 +2,11 @@
 
 > 一套基于 Java 17 的**军事战争实时分析与无人化决策**软件。
 > 战场感知 → 态势分析 → AI 决策 → 武器调度 → 自动反击，全程无人工干预。
-> 现已支持**强化学习**和**实时 Web 可视化大屏**。
+> 现已支持**强化学习**、**实时 Web 可视化大屏**和**战术顾问 Buff 增益系统**。
 
 [![Java 17](https://img.shields.io/badge/Java-17-blue)]()
 [![Maven](https://img.shields.io/badge/Maven-3.8%2B-orange)]()
-[![Tests](https://img.shields.io/badge/Tests-70%20passed-green)]()
+[![Tests](https://img.shields.io/badge/Tests-90%20passed-green)]()
 [![Modules](https://img.shields.io/badge/Modules-10-purple)]()
 
 ---
@@ -18,9 +18,14 @@
 本项目以仿真形式实现了一个完整的 OODA（Observe → Orient → Decide → Act）作战循环，
 两支自主军队在没有人工干预的情况下相互对抗。
 
+**V1.2 新增**：战术顾问系统（TacticalAdvisor）持续监控战场，给指挥官提供**实时建议**
+（攻击/防御/侧翼/后撤/补给）和**Buff 增益分配**（火力+/装甲+/机动+/探测+），让 AI 不只做决策，
+还能主动**增强战场优势**。
+
 **亮点能力**：
 - 🧠 **三套 AI 大脑可切换**：规则引擎 / 蒙特卡洛树搜索 / **Q-Learning 强化学习**
 - 📊 **实时 Web 大屏**：浏览器打开 `http://localhost:18080/` 看战场态势
+- 🎖️ **战术顾问 Buff 增益**：AI 实时分析"火力/人员/机动/探测/协同"五维优势，主动给单位加 buff 增强
 - ⚡ **毫秒级 OODA 循环**：每 5 秒推进一个 tick，事件总线支持多订阅者
 - 🎯 **自动武器调度**：火控计算机 + ROE 交战规则 + 命中概率结算
 
@@ -52,7 +57,7 @@
 |------|------|---------|------|
 | **core** | `core` | `Unit`, `Weapon`, `TerrainMap`, `BattleState`, `Team` | 战场领域模型 |
 | **realtime** | `realtime` | `BattleEventBus`, `BattleClock`, `BattleEvent` | 实时事件流（无锁环形缓冲） |
-| **analysis** | `analysis` | `SituationalAnalysis`, `ThreatAssessment` | 战场态势分析、威胁评估 |
+| **analysis** | `analysis` | `SituationalAnalysis`, `ThreatAssessment`, `BattleAdvantage`, `TacticalAdvisor` | 战场态势分析、威胁评估、**战场优势量化、战术顾问建议** |
 | **ai** | `ai` | `RuleEngine`, `MonteCarloTreeSearch`, `Action`, `DecisionPlan` | AI 决策引擎（规则 + MCTS） |
 | **weapon** | `weapon` | `FireControlComputer`, `WeaponScheduler`, `RulesOfEngagement` | 武器调度、火控计算 |
 | **simulation** | `simulation` | `Simulator` | 确定性仿真引擎（支持 MCTS 回放） |
@@ -131,6 +136,15 @@ java -jar openclaw-wargame-demo/target/openclaw-wargame-demo-1.0.0.jar 42 30 --h
 ---
 
 ## 🧠 核心特性
+
+### 0. **战术顾问与战场优势增强** (V1.2)
+
+`TacticalAdvisor` 每 tick 输出：
+- **`BattleAdvantage`** —— 5 维量化（firepower / manpower / detection / mobility / cohesion + overall [0-1]）
+- **`Advice`** —— 9 种战术建议（ATTACK / DEFEND / FLANK / RETREAT / RECON / RESUPPLY / COORDINATE_FIRE / EMERGENCY_RETREAT / STAND_DOWN）
+- **`BuffAssignment`** —— 7 种 Buff 增益（FIREPOWER +30%、ARMOR +50%、SPEED +40%、DETECTION +50%、STEALTH、SUPPRESSION、COORDINATION）
+
+Buff 由 Simulator 每 tick 衰减，叠加生效。Web 大屏上单位有 ✨ 标记表示有活跃 Buff。
 
 ### 1. **三套 AI 大脑**
 

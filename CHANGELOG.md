@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-25
+
+### Added
+- **`Buff` system in core** — Temporary unit stat modifiers (7 kinds: FIREPOWER, ARMOR, SPEED, DETECTION, STEALTH, COORDINATION, SUPPRESSION)
+- **`Unit.effective*()` methods** — Getter for buff-modified stats (effectiveFirepower/Speed/DetectionRange, stealthFactor, suppressionFactor)
+- **`BattleAdvantage`** — Multi-dimensional battlefield superiority assessment (5 axes: firepower, manpower, detection, mobility, cohesion + overall score)
+- **`TacticalAdvisor`** — Real-time AI combat assistant: generates `Advice` (ATTACK / DEFEND / FLANK / RETREAT / RESUPPLY / etc.) + `BuffAssignment` per tick
+- **`Unit.tickBuffs()`** — Buff duration decay on each simulation tick
+- **`Simulator` buff propagation** — Buffs are copied during `shallowCopy()` and decayed during `stepOne()`
+- **Web dashboard** — Tactical Advisor cards with 5-axis advantage bars and color-coded advice list
+- **`/api/advisory/{blue|red}`** REST endpoint exposing live advisor reports
+- **Map buffs visualization** — Yellow sparkle ✨ icon on units with active buffs
+
+### Stats
+- Tests: 70 → **90** (+20: 8 buff + 5 advantage + 7 advisor)
+
 ## [1.1.0] - 2026-06-25
 
 ### Added

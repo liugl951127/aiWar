@@ -12,6 +12,10 @@ const blueRatioEl = document.getElementById('blueRatio');
 const redRatioEl = document.getElementById('redRatio');
 const blueThreatsEl = document.getElementById('blueThreats');
 const redThreatsEl = document.getElementById('redThreats');
+const blueAdvantageEl = document.getElementById('blueAdvantage');
+const redAdvantageEl = document.getElementById('redAdvantage');
+const blueAdvicesEl = document.getElementById('blueAdvices');
+const redAdvicesEl = document.getElementById('redAdvices');
 const eventsEl = document.getElementById('events');
 
 let lastState = null;
@@ -19,20 +23,22 @@ let mapWidth = 1000, mapHeight = 1000;
 
 async function poll() {
   try {
-    const [snapRes, blueRes, redRes, evRes] = await Promise.all([
+    const [snapRes, blueRes, redRes, blueAdvRes, redAdvRes, evRes] = await Promise.all([
       fetch('/api/snapshot').then(r => r.json()),
       fetch('/api/analysis/blue').then(r => r.json()).catch(() => null),
       fetch('/api/analysis/red').then(r => r.json()).catch(() => null),
+      fetch('/api/advisory/blue').then(r => r.json()).catch(() => null),
+      fetch('/api/advisory/red').then(r => r.json()).catch(() => null),
       fetch('/api/events').then(r => r.json()).catch(() => ({ events: [] }))
     ]);
-    render(snapRes, blueRes, redRes, evRes);
+    render(snapRes, blueRes, redRes, blueAdvRes, redAdvRes, evRes);
   } catch (e) {
     statusEl.textContent = 'disconnected';
     statusEl.className = 'badge badge-stop';
   }
 }
 
-function render(snap, blueAnalysis, redAnalysis, events) {
+function render(snap, blueAnalysis, redAnalysis, blueAdvisory, redAdvisory, events) {
   // Status
   if (snap.winner) {
     statusEl.textContent = `🏆 ${snap.winner} WINS @ tick ${snap.winnerTick}`;
@@ -77,6 +83,63 @@ function render(snap, blueAnalysis, redAnalysis, events) {
   eventsEl.innerHTML = (events.events || []).slice().reverse().slice(0, 12).map(e =>
     `<li><span class="kind ${e.kind}">${e.kind}</span><span class="tick">t=${e.tick}</span></li>`
   ).join('');
+
+  // Tactical Advisor
+  renderAdvisory(blueAdvantageEl, blueAdvicesEl, blueAdvisory, 'blue');
+  renderAdvisory(redAdvantageEl, redAdvicesEl, redAdvisory, 'red');
+}
+
+function renderAdvantageBar(el, adv) {
+  if (!adv) { el.innerHTML = '<div class="row" style="color:#9fb1d6;">no data</div>'; return; }
+  const fields = [
+    { name: 'firepower', val: adv.firepower },
+    { name: 'manpower', val: adv.manpower },
+    { name: 'detection', val: adv.detection },
+    { name: 'mobility', val: adv.mobility },
+    { name: 'cohesion', val: adv.cohesion }
+  ];
+  let html = '';
+  for (const f of fields) {
+    const pct = Math.round(f.val * 100);
+    const color = f.val > 0.6 ? '#4caf50' : f.val > 0.4 ? '#ff9800' : '#f44336';
+    html += `<div class="row">
+      <span class="label">${f.name}</span>
+      <div class="bar"><div style="width:${pct}%; background:${color};"></div></div>
+      <span class="val">${pct}%</span>
+    </div>`;
+  }
+  const opct = Math.round(adv.overall * 100);
+  const ocolor = adv.overall > 0.6 ? '#4caf50' : adv.overall > 0.4 ? '#ff9800' : '#f44336';
+  html += `<div class="row overall">
+    <span class="label">OVERALL</span>
+    <div class="bar"><div style="width:${opct}%; background:${ocolor};"></div></div>
+    <span class="val">${opct}%</span>
+  </div>`;
+  el.innerHTML = html;
+}
+
+function renderAdvices(el, advices) {
+  if (!advices || advices.length === 0) {
+    el.innerHTML = '<li style="color:#9fb1d6;">no advice</li>';
+    return;
+  }
+  el.innerHTML = advices.map(a =>
+    `<li>
+      <span class="advice-kind ${a.kind}">${a.kind}</span>
+      <span class="priority">pri=${a.priority}</span>
+      <span class="reason">${a.reason}</span>
+    </li>`
+  ).join('');
+}
+
+function renderAdvisory(advEl, listEl, data, team) {
+  if (!data || data.error) {
+    advEl.innerHTML = '<div class="row" style="color:#9fb1d6;">waiting...</div>';
+    listEl.innerHTML = '';
+    return;
+  }
+  renderAdvantageBar(advEl, data.advantage);
+  renderAdvices(listEl, data.advices);
 }
 
 function drawMap(snap) {
@@ -133,11 +196,33 @@ function drawMap(snap) {
     ctx.lineWidth = 1;
     ctx.stroke();
 
+    // Buff ring (yellow if unit has buffs — surrogate using status)
+    if (u.status === 'ENGAGING') {
+      // already drawn above
+    }
+
     // Type label
     ctx.fillStyle = '#fff';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(u.type.substring(0, 4), cx, cy - r - 4);
+
+    // HP bar below unit
+    const hpw = Math.max(8, r * 2);
+    const hpx = cx - hpw / 2;
+    const hpy = cy + r + 4;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(hpx, hpy, hpw, 3);
+    ctx.fillStyle = u.alive ? '#4caf50' : '#555';
+    ctx.fillRect(hpx, hpy, hpw * (u.alive ? u.hp / u.maxHp : 0), 3);
+
+    // Buff icons (yellow glow for firepower, cyan for speed, etc.)
+    if (u.buffs && u.buffs.length > 0) {
+      ctx.fillStyle = '#ffeb3b';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('✨', cx + r, cy - r);
+    }
   }
 }
 
