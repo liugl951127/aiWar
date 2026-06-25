@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.openclaw.wargame</groupId>
+        <artifactId>openclaw-wargame</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>openclaw-wargame-web</artifactId>
+    <name>OpenClaw Wargame Web</name>
+    <description>HTTP server exposing REST API + serving HTML visualization dashboard</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-realtime</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-analysis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-autonomy</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+    </dependencies>
+</project>

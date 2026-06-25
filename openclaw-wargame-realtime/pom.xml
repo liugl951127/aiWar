@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.openclaw.wargame</groupId>
+        <artifactId>openclaw-wargame</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>openclaw-wargame-realtime</artifactId>
+    <name>OpenClaw Wargame Realtime</name>
+    <description>Real-time event stream and battle event bus (lock-free ring buffer style)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+    </dependencies>
+</project>

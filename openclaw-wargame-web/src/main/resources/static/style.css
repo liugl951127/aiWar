@@ -1,0 +1,131 @@
+/* OpenClaw Wargame Dashboard Styles */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #0b1220;
+  color: #d6e2ff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: #131c33;
+  border-bottom: 2px solid #1f2c52;
+}
+.topbar h1 {
+  font-size: 18px;
+  margin: 0;
+  font-weight: 600;
+  color: #fff;
+}
+.controls { display: flex; gap: 18px; align-items: center; }
+.tick, .time { font-size: 13px; color: #9fb1d6; }
+.badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-run { background: #2e7d32; color: white; }
+.badge-stop { background: #c62828; color: white; }
+.badge-connect { background: #ff8f00; color: white; }
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  padding: 18px;
+}
+
+.map-pane {
+  background: #131c33;
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+}
+#map {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #0a1426;
+  border: 1px solid #2a3a64;
+  border-radius: 4px;
+}
+.legend {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #9fb1d6;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.dot.blue { background: #2196f3; }
+.dot.red { background: #f44336; }
+.dot.dead { background: #555; }
+
+.side-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.card {
+  background: #131c33;
+  border-radius: 8px;
+  padding: 14px 16px;
+  border-left: 3px solid #2196f3;
+}
+.card h2 {
+  font-size: 14px;
+  margin: 0 0 10px;
+  color: #fff;
+  font-weight: 600;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.stat-row span { color: #9fb1d6; }
+.stat-row b { color: #fff; font-variant-numeric: tabular-nums; }
+
+.threat-list, .event-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+}
+.threat-list li, .event-list li {
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: #0a1426;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+.event-list li .kind {
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.event-list li .kind.HIT { background: #f44336; }
+.event-list li .kind.KILL { background: #b71c1c; }
+.event-list li .kind.WEAPON_FIRED { background: #ff8f00; }
+.event-list li .kind.DETECTION { background: #2196f3; }
+.event-list li .kind.DECISION_MADE { background: #9c27b0; }
+.event-list li .kind.UNIT_MOVED { background: #607d8b; }
+.event-list li .tick { color: #9fb1d6; font-variant-numeric: tabular-nums; margin-left: 8px; }

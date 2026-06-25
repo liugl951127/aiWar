@@ -1,0 +1,35 @@
+# Build outputs
+**/target/
+**/build/
+**/*.class
+**/*.jar
+!**/target/classes/.gitkeep
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Maven
+dependency-reduced-pom.xml
+
+# Misc
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Sandbox runtime files
+/tmp/

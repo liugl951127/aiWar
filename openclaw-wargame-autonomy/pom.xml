@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.openclaw.wargame</groupId>
+        <artifactId>openclaw-wargame</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>openclaw-wargame-autonomy</artifactId>
+    <name>OpenClaw Wargame Autonomy</name>
+    <description>Autonomous OODA combat loop (Observe → Orient → Decide → Act) — unmanned decision-making</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-realtime</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-analysis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-ai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-weapon</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-simulation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.openclaw.wargame</groupId>
+            <artifactId>openclaw-wargame-rl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+    </dependencies>
+</project>

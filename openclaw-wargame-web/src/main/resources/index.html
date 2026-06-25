@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>OpenClaw Wargame - Live Battle Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>🛰️ OpenClaw Wargame - Live Battle Dashboard</h1>
+    <div class="controls">
+      <span id="status" class="badge badge-run">connecting...</span>
+      <span class="tick">tick: <b id="tick">-</b></span>
+      <span class="time">time: <b id="time">-</b>s</span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="map-pane">
+      <canvas id="map" width="900" height="600"></canvas>
+      <div class="legend">
+        <span class="dot blue"></span> Blue (BLUE)
+        <span class="dot red"></span> Red (RED)
+        <span class="dot dead"></span> Destroyed
+      </div>
+    </section>
+
+    <aside class="side-pane">
+      <div class="card">
+        <h2>📊 Battle Stats</h2>
+        <div class="stat-row"><span>Blue alive</span><b id="blueAlive">-</b></div>
+        <div class="stat-row"><span>Red alive</span><b id="redAlive">-</b></div>
+        <div class="stat-row"><span>Blue firepower ratio</span><b id="blueRatio">-</b></div>
+        <div class="stat-row"><span>Red firepower ratio</span><b id="redRatio">-</b></div>
+      </div>
+
+      <div class="card">
+        <h2>🎯 Top Threats to Blue</h2>
+        <ul id="blueThreats" class="threat-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2>🎯 Top Threats to Red</h2>
+        <ul id="redThreats" class="threat-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2>📜 Recent Events</h2>
+        <ul id="events" class="event-list"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>
